@@ -1,0 +1,27 @@
+# ==========================================
+# Ignorer les fichiers de compilation (C)
+# ==========================================
+*.o
+*.out
+1_core_radio/radio
+2_visualizer/visualizer
+2_visualizer/visualizer_dB
+2_visualizer/visualizer_dyna
+
+# ==========================================
+# Ignorer les dépendances lourdes et binaires
+# ==========================================
+1_core_radio/piper/
+2_visualizer/raylib/
+3_live_client/ffmpeg.exe
+
+# ==========================================
+# Ignorer les médias (Musiques, Jingles, etc.)
+# ==========================================
+*.mp3
+*.ogg
+*.wav
+*.flac
+# On ignore tout le contenu du dossier playlist SAUF le fichier .gitkeep
+1_core_radio/playlist/*
+!1_core_radio/playlist/.gitkeep

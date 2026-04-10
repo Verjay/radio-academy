@@ -1,0 +1,30 @@
+1. Sécurité Réseau & Accès (Le rempart)
+Verrouillage sur Localhost : Le serveur réseau C n'écoute que sur INADDR_LOOPBACK (127.0.0.1). Même si le port 12345 de ton PC est ouvert sur ta box internet, personne ne peut s'y connecter de l'extérieur.
+
+Mot de passe en clair (Token) : Avant de lire la moindre goutte d'audio, le serveur exige le mot de passe strict ANTENNE.
+
+Protection anti-DDoS (Timeout) : Lors de la connexion, le client a exactement 3 secondes (SO_RCVTIMEO) pour envoyer le mot de passe. S'il reste muet (ou tente de saturer le serveur), la connexion est coupée net.
+
+Rejet des doubles connexions : Si tu es déjà en direct et qu'un deuxième client tente de se connecter, le serveur le rejette proprement pour éviter de mélanger deux flux audio.
+
+2. Stabilité & Gestion de la Mémoire (Anti-Crash)
+Vérification de la RAM (Realloc) : C'est le fameux avertissement qu'on a corrigé ! Si le serveur manque de RAM pendant le direct, au lieu de faire un Segmentation Fault (qui tuerait la radio), on capte l'erreur, on coupe le direct, et on reprend la musique.
+
+Bouclier anti-Buffer Overflow (API) : Lors du téléchargement des données météo/horloge, on a mis une limite stricte (MAX_API_RESPONSE_SIZE de 8 Ko). Si un pirate ou un bug de l'API renvoie 500 Mo de texte, le serveur coupe le téléchargement au lieu d'exploser sa RAM.
+
+Terminaison stricte des chaînes : Lors de la lecture du mot de passe sur le réseau, on force un caractère \0 à la fin du buffer pour garantir que la comparaison de texte (strncmp) ne lise pas en dehors de la mémoire autorisée.
+
+Nettoyage systématique (Memory Leaks) : À la fin de chaque chanson ou de chaque prise de direct, absolument tous les contextes FFmpeg (FIFO, Packets, Frames, SwrContext) sont libérés avec av_free() ou av_freep().
+
+3. Multithreading & Concurrence (L'harmonie)
+Utilisation des Mutex (live_mutex) : Le serveur principal qui lit la musique et le serveur réseau qui écoute les connexions tournent en parallèle. Le Mutex agit comme un feu rouge : il empêche les deux threads de modifier la variable is_live_active exactement à la même milliseconde, ce qui causerait un comportement imprévisible.
+
+4. Résilience de la Radio (L'uptime H24)
+Reconnexion auto à Icecast : Au démarrage, si le serveur Icecast n'est pas encore prêt, le programme C ne plante pas. Il fait une boucle avec un sleep(2) et retente indéfiniment jusqu'à ce qu'Icecast réponde.
+
+Filtre des fichiers fantômes : Le lecteur de playlist ignore automatiquement les fichiers commençant par un point (comme .DS_Store ou .git), qui feraient planter le décodeur audio.
+
+Boucle infinie sécurisée : Si le dossier playlist est supprimé ou introuvable par erreur, la radio ne s'éteint pas. Elle attend 5 secondes et réessaie de l'ouvrir en boucle.
+
+5. Sécurité côté Windows (Le script Client)
+Bloc Try/Catch/Finally : Quoi qu'il arrive (crash de FFmpeg, coupure réseau, ou si tu fermes la fenêtre violemment), le bloc finally s'assure de tuer le processus ffmpeg.exe en arrière-plan ($FFmpegProcess.Kill()) et de fermer le port TCP pour "libérer l'antenne" proprement.
